@@ -28,8 +28,8 @@ add_custom_target(
                            -D VERSION_EXTRA=${VERSION_EXTRA}
                            -D VERSION_CACHE_FILE=${VERSION_CACHE_FILE}
                            -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-                           -P ${CMAKE_SOURCE_DIR}/scripts/genversion.cmake
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                           -P ${CMAKE_CURRENT_LIST_DIR}/../scripts/genversion.cmake
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/..
 )
 
 add_custom_command(
@@ -120,7 +120,6 @@ file(GLOB PROJECT_CPP_FILES
   "FixedPoint.cpp"
   "OctreeNeighMap.cpp"
   "RAHT.cpp"
-  "TMC3.cpp"
   "attribute_raw_decoder.cpp"
   "attribute_raw_encoder.cpp"
   "coordinate_conversion.cpp"
@@ -151,6 +150,10 @@ file(GLOB PROJECT_CPP_FILES
   "../dependencies/schroedinger/schroarith.c"
 )
 
+# Create a source list for the library, excluding the main function
+list(FILTER PROJECT_CPP_FILES EXCLUDE REGEX ".*/TMC3\\.cpp$")
+set(TMC3_LIB_SOURCES ${PROJECT_CPP_FILES})
+
 source_group (inc FILES ${PROJECT_INC_FILES})
 source_group (input FILES ${PROJECT_IN_FILES})
 source_group (cpp FILES ${PROJECT_CPP_FILES})
@@ -163,12 +166,32 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/program-options-lite"
 )
 
-add_executable (tmc3
-  ${PROJECT_CPP_FILES}
+# Create a static library with most of the tmc3 sources
+add_library(tmc3_lib STATIC
+  ${TMC3_LIB_SOURCES}
   ${PROJECT_INC_FILES}
   ${PROJECT_IN_FILES}
   ${VERSION_FILE}
 )
+add_dependencies(tmc3_lib genversion)
+set_target_properties(tmc3_lib PROPERTIES PUBLIC_HEADER "${PROJECT_INC_FILES}")
+
+target_include_directories(tmc3_lib PUBLIC
+  "${PROJECT_BINARY_DIR}/tmc3"
+  "${PROJECT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/nanoflann"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/program-options-lite"
+)
+target_include_directories(tmc3_lib PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/schroedinger"
+)
+
+# The tmc3 executable now only contains the main function and links to the library
+add_executable (tmc3
+  "TMC3.cpp"
+)
+target_link_libraries(tmc3 PRIVATE tmc3_lib)
 add_dependencies(tmc3 genversion)
 
 add_executable (ply-merge EXCLUDE_FROM_ALL

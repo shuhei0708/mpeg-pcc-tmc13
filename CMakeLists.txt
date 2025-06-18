@@ -13,4 +13,9 @@ else ()
  MESSAGE(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif ()
 
+# Toplevel library is tmc3
 add_subdirectory(tmc3)
+
+# Add the sample_api executable
+add_executable(sample_api sample_api.cpp)
+target_link_libraries(sample_api PRIVATE tmc3_lib)
